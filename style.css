@@ -1,9 +1,11 @@
-body {
-    color: #444;
-    font-family: Arial, sans-serif;
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 .container {
     width: 100%;
     max-width: 960px;
 }
+#map { margin-top: 10px; height: 700px; width: 600px; }

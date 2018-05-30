@@ -1,15 +1,224 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title></title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <h1>Hello World!</h1>
-        <button id="btn">Click me</button>
-    </div>
-    <script src="index.js"></script>
-</body>
+    <head>
+        <meta charset="UTF-8">
+    	<title>NYUniHome</title>
+    	<script src="https://d3js.org/d3.v4.min.js"></script>
+    	<link rel="stylesheet" type="text/css" href="style.css" />
+    	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+    	<script src="index.js"></script>
+    			
+    	<!-- Latest compiled and minified CSS -->
+    	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    
+    	<!-- Optional theme -->
+    	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    
+    	<!-- Latest compiled and minified JavaScript -->
+    	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+	</head>
+	<body>
+		<div class="container">
+			<div class="row">
+				<h1>NYUniHome</h1>
+			</div>
+			<div class="row">
+				<div class="col-sm-5 col-md-5">
+					The red markers show rental places, click on them to see detailed info.
+				</div>
+				<div class="col-sm-7 col-md-7">
+					<div id="map"></div>
+				</div>
+			</div>
+		</div>
+	
+	
+    <!-- Script section -->
+    <script type="text/javascript">
+		var map, heatmap;
+		var count = 0;
+		var polygons = [];
+		var wait = true;
+		//console.log($.ajax({ url:"https://www.ncdc.noaa.gov/cdo-web/api/v2/datasets?datatypeid=FIPS:17", data: "", headers:{ token:"qNXRrjWmlYYJAOLeniQkonxhnSCxEuVu" } }));
+		function initMap() {
+			map = new google.maps.Map(document.getElementById('map'), {
+				center: {lat: 40.729584, lng: 286.004065},
+				//center: {lat: 40.801663, lng: 286.086778},
+				zoom: 14
+			});
+			setTimeout(markPolygons,1000);
+			setPolygons();
+			setHousingMarkers();
+			/*var setPoly = setPolygons();
+			setPoly.then( function(value){
+			    markPolygons();
+			    
+			});*/
+			//markPolygons();
+			var data = setHeatmapData();
+			heatmap = new google.maps.visualization.HeatmapLayer({
+				data: data,
+				map: map
+			});
+		}
+		
+		function setHousingMarkers(){
+	    	$.getJSON("https://data.cityofnewyork.us/api/views/hg8x-zxpr/rows.json?accessType=DOWNLOAD", function (json) {
+	    	    $.each(json.data, function(i, entry){
+	    	        addMarker(entry[9],entry[14],entry[15],"prov",entry[23],entry[24]);
+	    	    });
+	    	});
+		}
+		
+		function setPolygons(){
+			$.getJSON("https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/nycd/FeatureServer/0/query?where=1=1&outFields=*&outSR=4326&f=geojson", function (json) {
+				try{
+    				$.each(json.features, function(i, entry){
+    				    if(count<5){
+            			    //window.alert("second");
+            			    //map.center = marker.position;
+            			    //count += 1;
+            			}
+    					if(entry.geometry.type=="Polygon"){
+        					var lnglatCoords = [];
+        					var coords = entry.geometry.coordinates[0];
+        					
+        					
+                			
+                			var i = 0;
+        					coords.forEach(function(coord){
+        					    lnglatCoords[i] ={lng: coord[0], lat: coord[1]};
+        					    i++;
+        					})
+        					/*if(count<1){
+                			    window.alert(coords[0]);
+                			    //map.center = marker.position;
+                			    count += 1;
+                			}*/
+        					addPolygon(lnglatCoords);
+    					}
+    					//console.log(dataArray);
+    				});
+				}catch(e){
+				    console.log(e);
+				}
+			});
+			
+		}
+		function markPolygons(){
+			$.getJSON("https://data.cityofnewyork.us/api/views/xyye-rtrs/rows.json?accessType=DOWNLOAD", function (json) {
+				$.each(json.data, function(i, entry){
+				    var lat = entry[9].substring(20,38).split(" ")[1];
+				    var lng = entry[9].substring(7,23);
+				    if(count<5){
+        			   // window.alert("first");
+        			    //map.center = marker.position;
+        			   // count += 1;
+        			}
+				    $.each(polygons, function(j, poly){
+				        if(count<1){
+            			    //window.alert(google.maps.geometry.poly.containsLocation(new google.maps.LatLng(lat,lng), poly));
+            			    //map.center = marker.position;
+            			    //count += 1;
+            			}
+				        if(google.maps.geometry.poly.containsLocation(new google.maps.LatLng(lat,lng), poly)){
+				            poly.setMap(null);
+				            switch(entry[16]){
+				                case "Manhattan":
+				                    poly.fillColor = "#00CC00";
+				                    poly.strokeColor = "#00CC00";
+				                    break;
+				                case "Brooklyn":
+				                    poly.fillColor = "#CCCC00";
+				                    poly.strokeColor = "#CCCC00";
+				                    break;
+				                case "Bronx":
+				                    poly.fillColor = "#CC0000";
+				                    poly.strokeColor = "#CC0000";
+				                    break;
+				                case "Queens":
+				                    poly.fillColor = "#FF7700";
+				                    poly.strokeColor = "#FF7700";
+				                    break;
+				                case "Staten Island":
+				                    poly.fillColor = "#CC00CC";
+				                    poly.strokeColor = "#CC00CC";
+				                    break;
+				                default:
+				                    console.log("no boroug found");
+				                    
+				            }
+				            poly.setMap(map);
+				            if(count<5){
+                			    //window.alert(poly.fillColor);
+                			    //map.center = marker.position;
+                			    //count += 1;
+                			}
+				        }
+				    });
+					//addMarker("prov",entry[10],entry[16],"prov",lat,lng);
+					//console.log(dataArray);
+				});
+			});
+			//return json.data;
+		}
+		
+		function addMarker(name,street,borough,phone,lat,lng) {
+		    //console.log(lat + "" + lng + borough)
+			//dataArray.push(new google.maps.LatLng(lat,lng));
+			//console.log(dataArray);
+			//window.alert(""+lat+lng)
+			var infowindow = new google.maps.InfoWindow({
+				content: "<b>" + name + "</b><br>" +
+				"Street:  " + street + "<br>" + 
+				"Borough: " + borough + "<br>"
+			});
+			var marker = new google.maps.Marker({
+				position: new google.maps.LatLng(lat,lng),
+				map: map,
+				title: name
+			});
+			count+=1;
+			//console.log(marker.position + "" + lat + lng);
+			if(count<1){
+			    //window.alert(map.center + "" + lng + name);
+			    //map.center = marker.position;
+			    //count += 1;
+			}
+			marker.addListener("click", function() {
+				infowindow.close();
+				infowindow.open(map, marker);
+				infowindow.setPosition(new google.maps.LatLng(lat,lng));
+			});
+			//markersArray.push(marker);
+		}
+		
+		function addPolygon(coords) {
+			//dataArray.push(new google.maps.LatLng(lat,lng));
+			//console.log(dataArray);
+			//window.alert(""+lat+lng)
+			var districtShape = new google.maps.Polygon({
+                paths: coords,
+                strokeColor: '#555555',
+                strokeOpacity: 0.8,
+                strokeWeight: 2,
+                fillColor: '#555555',
+                fillOpacity: 0.35
+            });
+            districtShape.setMap(map);
+            polygons.push(districtShape);
+            if(count<3){
+			    //window.alert(polygons);
+			    //map.center = marker.position;
+			    //count += 1;
+			}
+			//markersArray.push(marker);
+		}
+		
+    </script>
+	<script async defer
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA8NQzfa5M4vyrDpbfVOgryj3vrhRACCPw&libraries=visualization&callback=initMap">
+    </script>
+    
+  </body>
 </html>
